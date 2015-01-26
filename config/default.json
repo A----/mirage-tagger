@@ -1,0 +1,12 @@
+{
+  "paths": {
+    "in": {
+      "torrents": "in/torrents/",
+      "data": "in/data/"
+    },
+    "out": {
+      "torrents": "out/torrents/",
+      "data": "out/data/"
+    }
+  }
+}

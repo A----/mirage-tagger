@@ -28,7 +28,7 @@ node_modules
 .lock-wscript
 
 # Custom
-config/*.json
+config/local.json
 in/data/*
 in/torrents/*
 out/data/*
