@@ -1,12 +1,15 @@
 var TrackerAPI = require("whatcd");
+var util = require("util");
 
 module.exports = function (noop, callback) {
   var client = new TrackerAPI(this.website.url, this.website.user, this.website.password);
 
-  client.torrent({ hash: this.torrent.data.infoHash }, (function (err, data) {
-    if(err) {
+  client.torrent({ hash: this.torrent.data.infoHash.toUpperCase() }, (function (err, data) {
+    if (err) {
       this.log.push("An error occurred while fetching torrent metadata".bold.red);
-      this.log.push(data);
+      if (data) {
+        this.log.push(data);
+      }
       callback(err, null);
     }
     else {

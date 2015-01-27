@@ -102,7 +102,7 @@ for(var i = 0; i < torrentFiles.length; i++) {
     (function (err, result) {
       var out = err ? console.error : console.log;
 
-      out(util.format("\nProcessing %s", this.torrent.filename.cyan));
+      out(util.format("\nProcessing %s", this.torrent.filename.bold.cyan));
       for (var i = 0; i < this.log.length; i++) {
         out("… " + this.log[i]);
       }
