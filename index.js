@@ -98,6 +98,7 @@ for(var i = 0; i < torrentFiles.length; i++) {
       actions.parseTorrent.bind(context),
       actions.verifyFilePresence.bind(context),
       actions.fetchFromTracker.bind(context),
+      actions.tagFlac.bind(context)
     ],
     (function (err, result) {
       var out = err ? console.error : console.log;
