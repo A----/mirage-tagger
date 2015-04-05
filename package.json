@@ -23,9 +23,15 @@
   },
   "homepage": "https://github.com/A----/mirage-tagger",
   "dependencies": {
+    "async": "^0.9.0",
+    "colors": "^1.0.3",
+    "config": "^1.12.0",
     "flac-metadata": "^0.1.1",
     "fs-tools": "^0.2.11",
     "natural": "^0.2.0",
-    "title-case": "^1.1.0"
+    "parse-torrent-file": "^2.1.3",
+    "pkginfo": "^0.3.0",
+    "title-case": "^1.1.0",
+    "whatcd": "^2.1.0"
   }
 }
