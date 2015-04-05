@@ -74,18 +74,16 @@ module.exports = function (noop, callback) {
 
   var addComment = function (comments, field, value) {
     if(value) {
-      if (comments[field]) {
-        comments[field].push("" + value);
+      if (!comments[field]) {
+        comments[field] = [];
       }
-      else {
-        comments[field] = [ ("" + value) ];
-      }
+      comments[field].push("" + value);
     }
   };
 
   var addArtistComment = function (comments, field, arr) {
     var artist;
-    for(var i = 0; i < arr; i++) {
+    for(var i = 0; i < arr.length; i++) {
       artist = arr[i];
       addComment(comments, field, artist.name);
       addComment(comments, "WCD_" + field + "_ID", artist.id);
@@ -98,10 +96,10 @@ module.exports = function (noop, callback) {
   // Recs: http://age.hobba.nl/audio/mirroredpages/ogg-tagging.html
   addArtistComment(comments, "ARTIST", musicInfo.artists);
   addArtistComment(comments, "DJ", musicInfo.dj); // Not in the recs
-  addArtistComment(comments, "CONDUCTOR", musicInfo.conductors);
+  addArtistComment(comments, "CONDUCTOR", musicInfo.conductor);
   addArtistComment(comments, "COMPOSER", musicInfo.composers);
   addArtistComment(comments, "PERFORMER", musicInfo.with);
-  addArtistComment(comments, "PRODUCER", musicInfo.producers); // Not in the recs either
+  addArtistComment(comments, "PRODUCER", musicInfo.producer); // Not in the recs either
 
   // Not in recs, but they're written on papyrus
   if(musicInfo.artists.length > 2) {
@@ -129,9 +127,9 @@ module.exports = function (noop, callback) {
   addComment(comments, "RELEASEDATE", this.metadata.torrent.remasterYear);
 
   var genre;
-  for(var i = 0; i < this.metadata.group.tags; i++) {
+  for(var i = 0; i < this.metadata.group.tags.length; i++) {
     genre = this.metadata.group.tags[i] || "";
-    genre = genre.replace(".", " ").
+    genre = genre.replace(".", " ");
     addComment(comments, "GENRE", titleCase(genre));
   }
 
@@ -159,7 +157,7 @@ module.exports = function (noop, callback) {
 
     reader = fs.createReadStream(path.join(this.paths.in.data, file.path));
     writer = fs.createWriteStream(path.join(this.paths.out.data, file.path));
-    var processor = new flacMetadata.Processor();
+    var processor = new flacMetadata.Processor({ parseMetaDataBlocks: true });
 
     var mdbVorbis;
     var vendor;
@@ -173,25 +171,30 @@ module.exports = function (noop, callback) {
         found;
 
     processor.on("preprocess", (function (mdb) {
-      this.log.push(util.inspect(mdb));
+    }).bind(this));
+
+    var context = this;
+
+    processor.on("postprocess", function(mdb) {
       // Remove existing VORBIS_COMMENT block, if any.
       if (mdb.type === flacMetadata.Processor.MDB_TYPE_VORBIS_COMMENT) {
         vendor = mdb.vendor;
-        for(var i = 0; i < mdb.comments; i++) {
+        for(var i = 0; i < mdb.comments.length; i++) {
           comment = mdb.comments[i];
           indexOf = comment.indexOf("=");
           if(indexOf > -1 && indexOf < (comment.length - 1) ) {
             addComment(existingComments, comment.substring(0, indexOf), comment.substring(indexOf + 1));
           }
         }
-        
-        if(mdb.isLast) { callback("err"); }
 
         mdb.remove();
       }
+
+
       // Prepare to add new VORBIS_COMMENT block as last metadata block.
       if (mdb.isLast) {
         mdb.isLast = false;
+        context.log.push(util.inspect(existingComments));
 
         finalComments = [];
 
@@ -209,7 +212,7 @@ module.exports = function (noop, callback) {
               message += " <<<" + comments[field][i].green;
             }
           }
-          else if(actions == actions.JAROWINKLER_75_REPLACE) {
+          else if(action == actions.JAROWINKLER_75_REPLACE) {
             for(var i = 0; i < existingComments[field].length; i++) {
               found = false;
               for(var j = 0; j < comments[field].length; j++) {
@@ -233,19 +236,19 @@ module.exports = function (noop, callback) {
               }
             }
 
-            if(comments.length == 1 && found == false || comments.length > 1) {
-              message += "(some input may have been dropped)";
+            if(comments[field].length == 1 && found == false || comments[field].length > 1) {
+              message += " (some input may have been dropped)";
             }
           }
 
-          this.log.push(message);
+          context.log.push(message);
         }
 
         for(var field in existingComments) {
           message = field + ":";
           action = actionsForFields[field] || actions.FORCE_KEEP;
 
-          if(action == actions.FORCE_KEEP) {
+          if(action == actions.FORCE_KEEP || comments[field] === undefined || comments[field].length == 0) {
             for(var i = 0; i < (comments[field] ? comments[field].length : 0); i++) {
               message += " <<<" + comments[field][i].red;
             }
@@ -255,13 +258,13 @@ module.exports = function (noop, callback) {
               message += " >>>" + existingComments[field][i].green;
             }
           }
+
+          context.log.push(message);
         }
 
         mdbVorbis = flacMetadata.data.MetaDataBlockVorbisComment.create(true, vendor || defaultVendor, finalComments);
       }
-    }).bind(this));
 
-    processor.on("postprocess", function(mdb) {
       if (mdbVorbis) {
         // Add new VORBIS_COMMENT block as last metadata block.
         this.push(mdbVorbis.publish());
@@ -271,7 +274,7 @@ module.exports = function (noop, callback) {
     reader.pipe(processor).pipe(writer);
 
     writer.on('finish', function() {
-      callback();
+      callback("STOP HERE");
     });
 
   }).bind(this),
