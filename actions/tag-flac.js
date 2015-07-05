@@ -7,6 +7,16 @@ var async = require("async");
 var fsTools = require("fs-tools");
 var natural = require("natural");
 
+var titleCase = function(str) {
+  return str
+    .replace(/[.]/g, " ")
+    .replace(/\s{2, }/g, " ")
+    .trim()
+    .replace(/^.| ./g, function(l) {
+      return l.toUpperCase();
+    });
+};
+
 var releaseTypes = {
   "1": "Album",
   "3": "Soundtrack",
@@ -157,7 +167,8 @@ module.exports = function (noop, callback) {
 
     reader = fs.createReadStream(path.join(this.paths.in.data, file.path));
     writer = fs.createWriteStream(path.join(this.paths.out.data, file.path));
-    var processor = new flacMetadata.Processor({ parseMetaDataBlocks: true });
+    var readProcessor = new flacMetadata.Processor({ parseMetaDataBlocks: true });
+    var writeProcessor = new flacMetadata.Processor({ parseMetaDataBlocks: true });
 
     var mdbVorbis;
     var vendor;
@@ -170,15 +181,25 @@ module.exports = function (noop, callback) {
         action,
         found;
 
-    processor.on("preprocess", (function (mdb) {
-    }).bind(this));
 
-    var context = this;
+    var context = this,
+        isLast = false;
 
-    processor.on("postprocess", function(mdb) {
+    readProcessor.on("preprocess", function(mdb) {
       // Remove existing VORBIS_COMMENT block, if any.
       if (mdb.type === flacMetadata.Processor.MDB_TYPE_VORBIS_COMMENT) {
-        vendor = mdb.vendor;
+        mdb.remove();
+      }
+      if (mdb.isLast) {
+        mdb.isLast = false;
+        isLast = true;
+      }
+    });
+
+    readProcessor.on("postprocess", (function (mdb) {
+
+      if (mdb.type === flacMetadata.Processor.MDB_TYPE_VORBIS_COMMENT) {
+        vendor = vendor || mdb.vendor;
         for(var i = 0; i < mdb.comments.length; i++) {
           comment = mdb.comments[i];
           indexOf = comment.indexOf("=");
@@ -187,15 +208,11 @@ module.exports = function (noop, callback) {
           }
         }
 
+        // Remove existing VORBIS_COMMENT block
         mdb.remove();
       }
 
-
-      // Prepare to add new VORBIS_COMMENT block as last metadata block.
-      if (mdb.isLast) {
-        mdb.isLast = false;
-        context.log.push(util.inspect(existingComments));
-
+      if (isLast) {
         finalComments = [];
 
         for(var field in comments) {
@@ -245,10 +262,11 @@ module.exports = function (noop, callback) {
         }
 
         for(var field in existingComments) {
-          message = field + ":";
           action = actionsForFields[field] || actions.FORCE_KEEP;
 
           if(action == actions.FORCE_KEEP || comments[field] === undefined || comments[field].length == 0) {
+            message = field + ":";
+
             for(var i = 0; i < (comments[field] ? comments[field].length : 0); i++) {
               message += " <<<" + comments[field][i].red;
             }
@@ -257,25 +275,22 @@ module.exports = function (noop, callback) {
               finalComments.push(field + "=" + existingComments[field][i]);
               message += " >>>" + existingComments[field][i].green;
             }
-          }
 
-          context.log.push(message);
+            context.log.push(message);
+          }
         }
 
-        mdbVorbis = flacMetadata.data.MetaDataBlockVorbisComment.create(true, vendor || defaultVendor, finalComments);
-      }
-
-      if (mdbVorbis) {
         // Add new VORBIS_COMMENT block as last metadata block.
+        mdbVorbis = flacMetadata.data.MetaDataBlockVorbisComment.create(true, vendor || defaultVendor, finalComments);
         this.push(mdbVorbis.publish());
       }
-    });
+    }));
 
-    reader.pipe(processor).pipe(writer);
+    reader.pipe(readProcessor).pipe(writer); // .pipe(writeProcessor)
 
-    writer.on('finish', function() {
-      callback("STOP HERE");
-    });
+    writer.on('finish', (function() {
+      //fs.unlink(path.join(this.paths.in.data, file.path), callback);
+    }).bind(this));
 
   }).bind(this),
   (function(err) {

@@ -46,10 +46,11 @@ if (!isConfigValid) {
   process.exit(1);
 }
 
-var torrentPath = config.get("paths.in.torrents");
+var torrentPathIn = config.get('paths.in.torrents');
+var torrentPathOut = config.get('paths.out.torrents');
 
 // Browse through input torrent directory
-var inDirContent = fs.readdirSync(torrentPath);
+var inDirContent = fs.readdirSync(torrentPathIn);
 var torrentFiles = [],
     file,
     stat;
@@ -57,7 +58,7 @@ var torrentFiles = [],
 // Filter out non-torrent files
 for(var i = 0; i < inDirContent.length; i++) {
   file = inDirContent[i];
-  stat = fs.statSync(path.join(torrentPath, file));
+  stat = fs.statSync(path.join(torrentPathIn, file));
   if (stat.isFile() && /.*\.torrent/.test(file)) {
     torrentFiles.push(file);
   }
@@ -85,7 +86,7 @@ for(var i = 0; i < torrentFiles.length; i++) {
       }
     },
     torrent: {
-      path: path.join(torrentPath, torrentFiles[i]),
+      path: path.join(torrentPathIn, torrentFiles[i]),
       filename: torrentFiles[i],
     },
     log: []
@@ -98,7 +99,9 @@ for(var i = 0; i < torrentFiles.length; i++) {
       actions.parseTorrent.bind(context),
       actions.verifyFilePresence.bind(context),
       actions.fetchFromTracker.bind(context),
-      actions.tagFlac.bind(context)
+      actions.tagFlac.bind(context),
+      actions.moveOtherFiles.bind(context),
+      actions.downloadCover.bind(context)
     ],
     (function (err, result) {
       var out = err ? console.error : console.log;
@@ -112,6 +115,10 @@ for(var i = 0; i < torrentFiles.length; i++) {
         out(err);
       }
       else {
+        fs.renameSync(
+          path.join(context.paths.in.torrent, context.torrent.filename),
+          path.join(context.paths.out.torrent, context.torrent.filename)
+        );
         out(result || "Done".bold.green);
       }
     }).bind(context)
