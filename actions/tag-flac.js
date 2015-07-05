@@ -288,9 +288,7 @@ module.exports = function (noop, callback) {
 
     reader.pipe(readProcessor).pipe(writer); // .pipe(writeProcessor)
 
-    writer.on('finish', (function() {
-      //fs.unlink(path.join(this.paths.in.data, file.path), callback);
-    }).bind(this));
+    writer.on('finish', callback);
 
   }).bind(this),
   (function(err) {

@@ -23,14 +23,8 @@ module.exports = function (noop, callback) {
       return;
     }
 
-    dirname = path.dirname(path.join(this.paths.out.data, file.path));
-    if(!fs.existsSync(dirname)) {
-      fsTools.mkdirSync(dirname);
-      this.log.push("Creating directory " + dirname.green);
-    }
-
     this.log.push("Moving " + file.path.cyan);
-
+    
     fsTools.copy(
       path.join(this.paths.in.data, file.path),
       path.join(this.paths.out.data, file.path),

@@ -3,6 +3,7 @@ var util = require("util");
 var fs = require("fs");
 var path = require("path");
 var fsTools = require("fs-tools");
+var async = require("async");
 var https = require("https");
 var http = require("http");
 
@@ -30,7 +31,31 @@ module.exports = function (noop, callback) {
       break;
     }
 
-    if(pkg) {
+    var files = this.torrent.data.files,
+        directories = [],
+        file,
+        directory,
+        found;
+    for(var i = 0; i < files.length; i++) {
+      file = files[i];
+      if (! /\.flac$/.test(file.name)) {
+        directory = path.dirname(path.join(this.paths.out.data, file.path));
+        found = false;
+        for(var j = 0; j < directories.length; j++) {
+          if(directories[j] == directory) {
+            found = true;
+            break;
+          }
+        }
+
+        if(!found) {
+          directories.push(directory);
+        }
+      }
+    }
+
+    if(directories.length > 0 || pkg) {
+
       pkg.get(imageUrl, (function(res) {
         if(res.statusCode != 200) {
           callback("Invalid " + "status code".red + ": " + res.statusCode);
@@ -38,17 +63,28 @@ module.exports = function (noop, callback) {
         else {
           var contentType = res.headers['content-type'];
           if(contentType && extentions[contentType]) {
-            var outFilename = path.join(this.paths.out.data, "wcd_cover" + extentions[contentType]);
-
-            dirname = path.dirname(outFilename);
-            if(!fs.existsSync(dirname)) {
-              fsTools.mkdirSync(dirname);
-              this.log.push("Creating directory " + dirname.green);
-            }
+            var firstDirectory = directories.shift(),
+                basename = "wcd_cover" + extentions[contentType],
+                outFilename = path.join(firstDirectory, basename);
 
             var outFile = fs.createWriteStream(outFilename);
             outFile.on('finish', function() {
-              outFile.close(callback);
+              outFile.close(function(err) {
+                if(err) {
+                  callback(err);
+                }
+                else if(directories.length == 0) {
+                  callback();
+                }
+                else {
+                  async.each(
+                    directories,
+                    function(directory, callback) {
+                      fsTools.copy(outFilename, path.join(directory, basename));
+                    },
+                    callback);
+                }
+              });
             });
             res.pipe(outFile);
           }
@@ -56,10 +92,14 @@ module.exports = function (noop, callback) {
             callback("Unhandled " + "MIME type".red + ": " + contentType);
           }
         }
-      }).bind(this)).on('error', (function(e) {
+      }).bind(this))
+      .on('error', (function(e) {
         this.log.push("An " + "error occurred".red + " while downloading the cover");
         callback(e, null);
       }).bind(this));
+    }
+    else if(directories.length > 0) {
+      callback("No directories ".red + "found");
     }
     else {
       callback("Unsupported " + "scheme".red);
