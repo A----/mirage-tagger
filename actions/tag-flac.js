@@ -128,8 +128,8 @@ module.exports = function (noop, callback) {
 
   addComment(comments, "ALBUM", this.metadata.group.name);
   addComment(comments, "DATE", this.metadata.group.year);
-  addComment(comments, "LABEL", this.metadata.torrent.remasterRecordLabel);
-  addComment(comments, "LABELNO", this.metadata.torrent.remasterCatalogueNumber);
+  addComment(comments, "LABEL", this.metadata.torrent.remasterRecordLabel || this.metadata.group.recordLabel);
+  addComment(comments, "LABELNO", this.metadata.torrent.remasterCatalogueNumber || this.metadata.group.catalogueNumber);
   addComment(comments, "SOURCEMEDIA", this.metadata.torrent.media);
   addComment(comments, "RELEASEVERSION", this.metadata.torrent.remasterTitle); // No es en las recs.
   addComment(comments, "RELEASETYPE", releaseTypes[this.metadata.group.releaseType]); // Nein in der recs.
@@ -145,12 +145,11 @@ module.exports = function (noop, callback) {
 
   var files = this.torrent.data.files;
 
-  var basename,
-      reader,
-      writer,
-      processor;
-
   async.eachSeries(files, (function(file, callback) {
+    var basename,
+        reader,
+        writer,
+        processor;
 
     if (! /\.flac$/.test(file.name)) {
       callback();
@@ -167,8 +166,7 @@ module.exports = function (noop, callback) {
 
     reader = fs.createReadStream(path.join(this.paths.in.data, file.path));
     writer = fs.createWriteStream(path.join(this.paths.out.data, file.path));
-    var readProcessor = new flacMetadata.Processor({ parseMetaDataBlocks: true });
-    var writeProcessor = new flacMetadata.Processor({ parseMetaDataBlocks: true });
+    processor = new flacMetadata.Processor({ parseMetaDataBlocks: true });
 
     var mdbVorbis;
     var vendor;
@@ -181,11 +179,10 @@ module.exports = function (noop, callback) {
         action,
         found;
 
-
     var context = this,
         isLast = false;
 
-    readProcessor.on("preprocess", function(mdb) {
+    processor.on("preprocess", function(mdb) {
       // Remove existing VORBIS_COMMENT block, if any.
       if (mdb.type === flacMetadata.Processor.MDB_TYPE_VORBIS_COMMENT) {
         mdb.remove();
@@ -196,7 +193,7 @@ module.exports = function (noop, callback) {
       }
     });
 
-    readProcessor.on("postprocess", (function (mdb) {
+    processor.on("postprocess", (function (mdb) {
 
       if (mdb.type === flacMetadata.Processor.MDB_TYPE_VORBIS_COMMENT) {
         vendor = vendor || mdb.vendor;
@@ -286,7 +283,7 @@ module.exports = function (noop, callback) {
       }
     }));
 
-    reader.pipe(readProcessor).pipe(writer); // .pipe(writeProcessor)
+    reader.pipe(processor).pipe(writer); // .pipe(writeProcessor)
 
     writer.on('finish', callback);
 

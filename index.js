@@ -8,6 +8,21 @@ var path = require('path');
 
 var actions = require("./actions");
 
+/*
+var fs = require("fs");
+var flac = require("flac-metadata");
+
+var reader = fs.createReadStream("./test.flac");
+var processor = new flac.Processor({ parseMetaDataBlocks: true });
+
+
+processor.on("postprocess", function(mdb) {
+  console.log(util.inspect(mdb));
+});
+
+reader.pipe(processor);
+*/
+
 // Checking config.
 console.log(module.exports.name.bold + " " + module.exports.version.bold);
 
@@ -143,8 +158,8 @@ for(var i = 0; i < torrentFiles.length; i++) {
         }
 
         try {
-          if(fs.existsSync(directory)) {
-            fs.unlinkSync(file);
+          if(fs.existsSync(file)) {
+            //fs.unlinkSync(file);
           }
         }
         catch(e) {

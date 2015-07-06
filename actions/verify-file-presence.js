@@ -13,7 +13,7 @@ module.exports = function (noop, callback) {
     }).bind(this),
     (function (results){
       if(results.length > 0) {
-        this.log.push("%s files not found out of %d", results.length, files.length);
+        this.log.push(util.format("%s files not found out of %d", results.length, files.length));
         callback("Can't find all files.".bold.red, null);
       }
       else {

@@ -80,7 +80,7 @@ module.exports = function (noop, callback) {
                   async.each(
                     directories,
                     function(directory, callback) {
-                      fsTools.copy(outFilename, path.join(directory, basename));
+                      fsTools.copy(outFilename, path.join(directory, basename), callback);
                     },
                     callback);
                 }
