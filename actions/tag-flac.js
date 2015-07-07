@@ -201,7 +201,7 @@ module.exports = function (noop, callback) {
           comment = mdb.comments[i];
           indexOf = comment.indexOf("=");
           if(indexOf > -1 && indexOf < (comment.length - 1) ) {
-            addComment(existingComments, comment.substring(0, indexOf), comment.substring(indexOf + 1));
+            addComment(existingComments, comment.substring(0, indexOf).toUpperCase(), comment.substring(indexOf + 1));
           }
         }
 

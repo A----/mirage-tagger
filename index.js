@@ -8,20 +8,6 @@ var path = require('path');
 
 var actions = require("./actions");
 
-/*
-var fs = require("fs");
-var flac = require("flac-metadata");
-
-var reader = fs.createReadStream("./test.flac");
-var processor = new flac.Processor({ parseMetaDataBlocks: true });
-
-
-processor.on("postprocess", function(mdb) {
-  console.log(util.inspect(mdb));
-});
-
-reader.pipe(processor);
-*/
 
 // Checking config.
 console.log(module.exports.name.bold + " " + module.exports.version.bold);
@@ -82,112 +68,119 @@ for(var i = 0; i < inDirContent.length; i++) {
 console.log(util.format("\n%s torrent file(s) found out of %d", torrentFiles.length, inDirContent.length));
 
 // For each file, execute a serie of action.
-for(var i = 0; i < torrentFiles.length; i++) {
-  // Declares context, actions will amend it.
-  var context = {
-    website: {
-      url: config.get("website.url"),
-      user: config.get("website.user"),
-      password: config.get("website.password")
-    },
-    paths: {
-      in: {
-        torrent: config.get("paths.in.torrents"),
-        data: config.get("paths.in.data")
+async.eachLimit(
+  torrentFiles,
+  1,
+  function(torrentFile, callback) {
+
+    // Declares context, actions will amend it.
+    var context = {
+      website: {
+        url: config.get("website.url"),
+        user: config.get("website.user"),
+        password: config.get("website.password")
       },
-      out: {
-        torrent: config.get("paths.out.torrents"),
-        data: config.get("paths.out.data")
-      }
-    },
-    torrent: {
-      path: path.join(torrentPathIn, torrentFiles[i]),
-      filename: torrentFiles[i],
-    },
-    log: []
-  };
+      paths: {
+        in: {
+          torrent: config.get("paths.in.torrents"),
+          data: config.get("paths.in.data")
+        },
+        out: {
+          torrent: config.get("paths.out.torrents"),
+          data: config.get("paths.out.data")
+        }
+      },
+      torrent: {
+        path: path.join(torrentPathIn, torrentFile),
+        filename: torrentFile,
+      },
+      log: []
+    };
 
-  async.waterfall([
-      // First function only takes one parameter.
-      // With this, all actions have the same interface.
-      function (callback) { callback(null, null); },
-      actions.parseTorrent.bind(context),
-      actions.verifyFilePresence.bind(context),
-      actions.fetchFromTracker.bind(context),
-      actions.tagFlac.bind(context),
-      actions.moveOtherFiles.bind(context),
-      actions.downloadCover.bind(context)
-    ],
-    (function (err, result) {
-      var out = err ? console.error : console.log;
+    async.waterfall([
+        // First function only takes one parameter.
+        // With this, all actions have the same interface.
+        function (callback) { callback(null, null); },
+        actions.parseTorrent.bind(context),
+        actions.verifyFilePresence.bind(context),
+        actions.fetchFromTracker.bind(context),
+        actions.tagFlac.bind(context),
+        actions.moveOtherFiles.bind(context),
+        actions.downloadCover.bind(context)
+      ],
+      (function (err, result) {
+        var out = err ? console.error : console.log;
 
-      out(util.format("\nProcessing %s", this.torrent.filename.bold.cyan));
-      for (var i = 0; i < this.log.length; i++) {
-        out("… " + this.log[i]);
-      }
+        out(util.format("\nProcessing %s", this.torrent.filename.bold.cyan));
+        for (var i = 0; i < this.log.length; i++) {
+          out("… " + this.log[i]);
+        }
 
-      var cleanupPath;
+        var cleanupPath;
 
-      if (err) {
-        out(err);
-        cleanupPath = this.paths.out.data;
-      }
-      else {
-        cleanupPath = this.paths.in.data;
-      }
+        if (err) {
+          out(err);
+          cleanupPath = this.paths.out.data;
+        }
+        else {
+          cleanupPath = this.paths.in.data;
+        }
 
-      // Cleaning up either input or output directory
-      var files = this.torrent.data.files,
-          directories = [],
-          file,
-          directory,
-          found;
-      for(var i = 0; i < files.length; i++) {
-        file = path.join(cleanupPath, files[i].path);
-        directory = path.dirname(path.join(cleanupPath, file));
-        found = false;
-        for(var j = 0; j < directories.length; j++) {
-          if(directories[j] == directory) {
-            found = true;
-            break;
+        // Cleaning up either input or output directory
+        var files = this.torrent.data.files,
+            directories = [],
+            file,
+            directory,
+            found;
+        for(var i = 0; i < files.length; i++) {
+          file = path.join(cleanupPath, files[i].path);
+          directory = path.dirname(path.join(cleanupPath, file));
+          found = false;
+          for(var j = 0; j < directories.length; j++) {
+            if(directories[j] == directory) {
+              found = true;
+              break;
+            }
+          }
+
+          if(!found) {
+            directories.push(directory);
+          }
+
+          try {
+            if(fs.existsSync(file)) {
+              //fs.unlinkSync(file);
+            }
+          }
+          catch(e) {
+            console.log("Failed".red + " to delete file " + file);
           }
         }
 
-        if(!found) {
-          directories.push(directory);
-        }
+        for(var i = 0; i < directories.length; i++) {
+          directory = path.join(cleanupPath, directories[i]);
 
-        try {
-          if(fs.existsSync(file)) {
-            //fs.unlinkSync(file);
+          try {
+            if(fs.existsSync(directory)) {
+              fs.rmdirSync(directory);
+            }
+          }
+          catch (e) {
+            console.log("Failed".red + " to remove directory " + directory);
           }
         }
-        catch(e) {
-          console.log("Failed".red + " to delete file " + file);
+
+        if(!err) {
+          fs.renameSync(
+            path.join(this.paths.in.torrent, this.torrent.filename),
+            path.join(this.paths.out.torrent, this.torrent.filename)
+          );
+          out(result || "Done".bold.green);
         }
-      }
 
-      for(var i = 0; i < directories.length; i++) {
-        directory = path.join(cleanupPath, directories[i]);
+        callback(err);
+      }).bind(context)
+      );
+  }
 
-        try {
-          if(fs.existsSync(directory)) {
-            fs.rmdirSync(directory);
-          }
-        }
-        catch (e) {
-          console.log("Failed".red + " to remove directory " + directory);
-        }
-      }
-
-      if(!err) {
-        fs.renameSync(
-          path.join(this.paths.in.torrent, this.torrent.filename),
-          path.join(this.paths.out.torrent, this.torrent.filename)
-        );
-        out(result || "Done".bold.green);
-      }
-    }).bind(context)
-    );
-
-}
+);
