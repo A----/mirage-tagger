@@ -236,7 +236,7 @@ module.exports = function (noop, callback) {
                   found = true;
                   break;
                 }
-                else if(natural.JaroWinklerDistance(existingComments[field][i].toLowerCase(), comments[field][j].toLowerCase()) > 0.75) {
+                else if(natural.DiceCoefficient(existingComments[field][i].toLowerCase(), comments[field][j].toLowerCase()) > 0.70) {
                   message += " >>>" + existingComments[field][i].red + " <<<" + comments[field][j].green;
                   finalComments.push(field + "=" + comments[field][j]);
                   found = true;
@@ -283,7 +283,7 @@ module.exports = function (noop, callback) {
       }
     }));
 
-    reader.pipe(processor).pipe(writer); // .pipe(writeProcessor)
+    reader.pipe(processor).pipe(writer);
 
     writer.on('finish', callback);
 
