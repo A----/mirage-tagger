@@ -8,7 +8,6 @@ var path = require('path');
 
 var actions = require("./actions");
 
-
 // Checking config.
 console.log(module.exports.name.bold + " " + module.exports.version.bold);
 
@@ -149,7 +148,7 @@ async.eachLimit(
 
           try {
             if(fs.existsSync(file)) {
-              //fs.unlinkSync(file);
+              fs.unlinkSync(file);
             }
           }
           catch(e) {
@@ -178,7 +177,7 @@ async.eachLimit(
           out(result || "Done".bold.green);
         }
 
-        callback(err);
+        callback();
       }).bind(context)
       );
   }

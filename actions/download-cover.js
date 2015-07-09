@@ -38,7 +38,7 @@ module.exports = function (noop, callback) {
         found;
     for(var i = 0; i < files.length; i++) {
       file = files[i];
-      if (! /\.flac$/.test(file.name)) {
+      if (/\.flac$/.test(file.name)) {
         directory = path.dirname(path.join(this.paths.out.data, file.path));
         found = false;
         for(var j = 0; j < directories.length; j++) {
@@ -58,7 +58,8 @@ module.exports = function (noop, callback) {
 
       pkg.get(imageUrl, (function(res) {
         if(res.statusCode != 200) {
-          callback("Invalid " + "status code".red + ": " + res.statusCode);
+          this.log.push("Invalid " + "status code".red + ": " + res.statusCode);
+          callback();
         }
         else {
           var contentType = res.headers['content-type'];
@@ -89,20 +90,24 @@ module.exports = function (noop, callback) {
             res.pipe(outFile);
           }
           else {
-            callback("Unhandled " + "MIME type".red + ": " + contentType);
+            this.log.push("Unhandled " + "MIME type".red + ": " + contentType);
+            callback();
           }
         }
       }).bind(this))
       .on('error', (function(e) {
         this.log.push("An " + "error occurred".red + " while downloading the cover");
-        callback(e, null);
+        this.log.push(util.inspect(e));
+        callback();
       }).bind(this));
     }
     else if(directories.length > 0) {
-      callback("No directories ".red + "found");
+      this.log.push("No directories ".red + "found");
+      callback();
     }
     else {
-      callback("Unsupported " + "scheme".red);
+      this.log.push("Unsupported " + "scheme".red);
+      callback();
     }
   }
 
