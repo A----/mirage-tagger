@@ -7,6 +7,16 @@ var async = require("async");
 var fsTools = require("fs-tools");
 var natural = require("natural");
 
+/*
+Resources for FLAC tagging:
+ * http://en.wikipedia.org/wiki/Vorbis_comment
+ * https://wiki.xiph.org/index.php/VorbisComment#Recommended_field_names
+ * http://xiph.org/vorbis/doc/v-comment.html
+ * http://age.hobba.nl/audio/mirroredpages/ogg-tagging.html
+ * https://wiki.xiph.org/Field_names
+ * http://www.legroom.net/2009/05/09/ogg-vorbis-and-flac-comment-field-recommendations
+*/
+
 var titleCase = function(str) {
   return str
     .replace(/[.]/g, " ")
