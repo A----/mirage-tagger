@@ -121,7 +121,7 @@ module.exports = function (noop, callback) {
       artist = arr[i];
       // Removes the japanese translation sometimes added after japanese artist names
       // That might have to be done with other non-western characters (arabic, …)
-      artistName = artist.name.replace(/ \(([一-龠]+|[ぁ-ゔ]+|[ァ-ヴー]+|[ａ-ｚＡ-Ｚ０-９]+[々〆〤]+)\)$/, "");
+      artistName = artist.name.replace(/ \(([一-龠ぁ-ゔァ-ヴーａ-ｚＡ-Ｚ０-９々〆〤]+)\)$/, "");
       addComment(comments, field, artistName);
       addComment(comments, "WCD_" + field + "_ID", artist.id);
     }
