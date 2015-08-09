@@ -17,7 +17,11 @@ var extentions = {
 module.exports = function (noop, callback) {
   var imageUrl = this.metadata.group.wikiImage;
 
-  if(imageUrl) {
+  if(!imageUrl) {
+    this.log.push("No cover ".red + "specified");
+    callback();
+  }
+  else {
     var pkg = null;
 
     this.log.push("Downloading cover " + imageUrl.cyan);
