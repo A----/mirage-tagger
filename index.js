@@ -93,7 +93,11 @@ async.eachLimit(
         path: path.join(torrentPathIn, torrentFile),
         filename: torrentFile,
       },
-      log: []
+      log: []/*{
+        push: function(item) {
+          console.log(item);
+        }
+      }*/
     };
 
     async.waterfall([

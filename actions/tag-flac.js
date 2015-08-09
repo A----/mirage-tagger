@@ -6,6 +6,7 @@ var titleCase = require("title-case");
 var async = require("async");
 var fsTools = require("fs-tools");
 var natural = require("natural");
+var Entities = require('html-entities').AllHtmlEntities;
 
 /*
 Resources for FLAC tagging:
@@ -83,8 +84,10 @@ var actionsForFields = {
   "RELEASETYPE": actions.FORCE_DROP,
   "RELEASEDATE": actions.FORCE_DROP,
 
-  "GENRE": actions.FORCE_DROP,
+  "GENRE": actions.FORCE_DROP
 };
+
+var entities = new Entities();
 
 module.exports = function (noop, callback) {
 
@@ -92,20 +95,34 @@ module.exports = function (noop, callback) {
   var defaultVendor = "reference libFLAC 1.2.1 20070917";
   var comments = {};
 
-  var addComment = function (comments, field, value) {
+  var addComment = function (comments, field, value, decodeEntities) {
     if(value) {
       if (!comments[field]) {
         comments[field] = [];
       }
-      comments[field].push("" + value);
+
+      var decodedValue;
+      if(decodeEntities) {
+        decodedValue = "" + entities.decode(value);
+      }
+      else {
+        decodedValue = "" + value;
+      }
+
+      if(comments[field].indexOf(decodedValue) == -1) {
+        comments[field].push(decodedValue);
+      }
     }
   };
 
   var addArtistComment = function (comments, field, arr) {
-    var artist;
+    var artist, artistName;
     for(var i = 0; i < arr.length; i++) {
       artist = arr[i];
-      addComment(comments, field, artist.name);
+      // Removes the japanese translation sometimes added after japanese artist names
+      // That might have to be done with other non-western characters (arabic, …)
+      artistName = artist.name.replace(/ \(([一-龠]+|[ぁ-ゔ]+|[ァ-ヴー]+|[ａ-ｚＡ-Ｚ０-９]+[々〆〤]+)\)$/, "");
+      addComment(comments, field, artistName);
       addComment(comments, "WCD_" + field + "_ID", artist.id);
     }
   };
@@ -136,12 +153,12 @@ module.exports = function (noop, callback) {
   addComment(comments, "WCD_GROUP_ID", this.metadata.group.id);
   addComment(comments, "WCD_TORRENT_ID", this.metadata.torrent.id);
 
-  addComment(comments, "ALBUM", this.metadata.group.name);
+  addComment(comments, "ALBUM", this.metadata.group.name, true);
   addComment(comments, "DATE", this.metadata.group.year);
-  addComment(comments, "LABEL", this.metadata.torrent.remasterRecordLabel || this.metadata.group.recordLabel);
-  addComment(comments, "LABELNO", this.metadata.torrent.remasterCatalogueNumber || this.metadata.group.catalogueNumber);
+  addComment(comments, "LABEL", this.metadata.torrent.remasterRecordLabel || this.metadata.group.recordLabel, true);
+  addComment(comments, "LABELNO", this.metadata.torrent.remasterCatalogueNumber || this.metadata.group.catalogueNumber, true);
   addComment(comments, "SOURCEMEDIA", this.metadata.torrent.media);
-  addComment(comments, "RELEASEVERSION", this.metadata.torrent.remasterTitle); // No es en las recs.
+  addComment(comments, "RELEASEVERSION", this.metadata.torrent.remasterTitle, true); // No es en las recs.
   addComment(comments, "RELEASETYPE", releaseTypes[this.metadata.group.releaseType]); // Nein in der recs.
   // We should be able to set multiple DATE entries, but I doubt anyone follows the recommandations.
   addComment(comments, "RELEASEDATE", this.metadata.torrent.remasterYear);
