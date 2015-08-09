@@ -50,10 +50,10 @@ var actions = {
   FORCE_DROP: "FORCE_DROP",
   // Tags will be kept in any case in existing tag is present
   FORCE_KEEP: "FORCE_KEEP",
-  // For each value for this field, a Jaro-Winkler distance will be computed
-  // and the value will be replaced if said distance is comprised between 0.75 and 1
+  // For each value for this field, a Dice coefficient will be computed
+  // and the value will be replaced if said distance is comprised between 0.70 and 1
   // (not included)
-  JAROWINKLER_75_REPLACE: "JAROWINKLER_75_REPLACE"
+  DICECOEFFICIENT_REPLACE: "DICECOEFFICIENT_REPLACE"
 };
 
 var actionsForFields = {
@@ -66,12 +66,12 @@ var actionsForFields = {
   "WCD_GROUP_ID": actions.FORCE_KEEP,
   "WCD_TORRENT_ID": actions.FORCE_KEEP,
 
-  "ARTIST": actions.JAROWINKLER_75_REPLACE,
-  "DJ": actions.JAROWINKLER_75_REPLACE,
-  "CONDUCTOR": actions.JAROWINKLER_75_REPLACE,
-  "COMPOSER": actions.JAROWINKLER_75_REPLACE,
-  "PERFORMER": actions.JAROWINKLER_75_REPLACE,
-  "PRODUCER": actions.JAROWINKLER_75_REPLACE,
+  "ARTIST": actions.DICECOEFFICIENT_REPLACE,
+  "DJ": actions.DICECOEFFICIENT_REPLACE,
+  "CONDUCTOR": actions.DICECOEFFICIENT_REPLACE,
+  "COMPOSER": actions.DICECOEFFICIENT_REPLACE,
+  "PERFORMER": actions.DICECOEFFICIENT_REPLACE,
+  "PRODUCER": actions.DICECOEFFICIENT_REPLACE,
 
   "ALBUMARTIST": actions.FORCE_DROP,
   "ALBUM": actions.FORCE_DROP,
@@ -236,7 +236,7 @@ module.exports = function (noop, callback) {
               message += " <<<" + comments[field][i].green;
             }
           }
-          else if(action == actions.JAROWINKLER_75_REPLACE) {
+          else if(action == actions.DICECOEFFICIENT_REPLACE) {
             for(var i = 0; i < existingComments[field].length; i++) {
               found = false;
               for(var j = 0; j < comments[field].length; j++) {
