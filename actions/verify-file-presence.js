@@ -9,7 +9,23 @@ module.exports = function (noop, callback) {
   async.reject(
     files,
     (function (item, callback) {
-      fs.exists(path.join(this.paths.in.data, item.path), callback);
+      var values = [
+            item.path,
+            item.path.replace(/\\[ ]+/, '\\')
+          ],
+          value;
+
+      for(var i = 0; i < values.length; i++) {
+        value = values[i];
+
+        if(fs.existsSync(path.join(this.paths.in.data, value))) {
+          item.path = value;
+          callback(true);
+          return;
+        }
+      }
+
+      callback(false);
     }).bind(this),
     (function (results){
       if(results.length > 0) {
